@@ -1,62 +1,66 @@
-# WooCommerce Huuto Sync
+# WooCommerce Huuto.net Sync
 
-**Version**: 1.0.0  
-**Author**: Your Name  
-**Description**: A WooCommerce plugin to sync products between WooCommerce and Huuto.net. The plugin allows store owners to select products for sync, add custom Huuto-specific information, and automatically sync product status changes between WooCommerce and Huuto. The plugin also handles automatic API token authentication.
+## Description
 
----
+The WooCommerce Huuto.net Sync plugin allows you to synchronize your WooCommerce products with the Huuto.net online marketplace. This plugin enables easy listing of WooCommerce products on Huuto.net and keeps the product data in sync between your WooCommerce store and Huuto.net.
 
 ## Features
 
-- Select WooCommerce products to sync with Huuto.
-- Add custom Huuto-specific product information, such as category ID, delivery methods, etc.
-- Automatically sync product status changes between WooCommerce and Huuto (e.g., from draft to published).
-- Automatic API token management: requests and refreshes the token automatically.
-- Customize WooCommerce products with additional fields for Huuto integration.
-- Sync product information such as title, price, description, and stock quantity.
+- Sync WooCommerce products to Huuto.net.
+- Select Huuto.net categories directly from the WooCommerce product editor.
+- Manage delivery methods for products listed on Huuto.net.
+- Automatically sync product updates and status changes (published/draft) between WooCommerce and Huuto.net.
 
 ## Installation
 
-1. Download the plugin files and upload the `woocommerce-huuto-sync` folder to the `/wp-content/plugins/` directory of your WordPress installation.
-2. Activate the plugin through the **Plugins** menu in WordPress.
-3. Once activated, go to **Settings > Huuto Sync** to enter your Huuto.net username and password for API authentication.
-4. Save your credentials, and the plugin will automatically request an API token for further API requests.
+1. **Upload the plugin files to the `/wp-content/plugins/woocommerce-huuto-sync` directory**, or install the plugin through the WordPress plugins screen directly.
 
----
+2. **Activate the plugin** through the 'Plugins' screen in WordPress.
+
+3. Go to **Settings > Huuto Sync** to configure the plugin with your **Huuto.net API credentials**.
+
+4. In the WooCommerce product editor, you will see additional fields for syncing products with Huuto.net, selecting a category, and entering delivery methods.
 
 ## Usage
 
-### Syncing Products with Huuto
+1. **Configure API Credentials**:
 
-1. **Go to WooCommerce Products**: Navigate to the product page you want to sync.
-2. **Enable Sync**: In the product editing page, locate the custom field labeled **Sync with Huuto** and check the box.
-3. **Enter Huuto-Specific Information**: Fill in the additional Huuto-specific fields, such as:
-   - **Huuto Category ID**: The category ID from Huuto where the product belongs.
-   - **Huuto Delivery Methods**: Comma-separated delivery methods (e.g., "pickup, shipment").
-4. **Save the Product**: Once the product is saved, it will be synced to Huuto. The plugin automatically handles the API token and sends the product data to Huuto.
-5. **Automatic Syncing**: When the product's status changes in WooCommerce (e.g., from draft to published), it will automatically update on Huuto.
+   - Go to **Settings > Huuto Sync** in your WordPress admin panel.
+   - Enter your Huuto.net username and password.
 
-### API Token Management
+2. **Sync WooCommerce Products**:
 
-- The plugin will automatically request an `api_token` from Huuto.net when the credentials are saved in the settings.
-- The token and its expiration time are stored in the WordPress database and will be refreshed automatically when it expires.
+   - Go to any WooCommerce product in your store.
+   - In the product editor, check the **Sync with Huuto.net** checkbox.
+   - Select a **Huuto.net Category** and enter **Delivery Methods**.
+   - Save the product, and it will be synced with Huuto.net.
 
----
+3. **Automatic Sync**:
+   - Any changes to the product (such as price, stock, or status) will automatically be updated on Huuto.net.
 
-## Settings Page
+## Requirements
 
-1. **Navigate to Settings**: Go to **Settings > Huuto Sync** in the WordPress admin.
-2. **Enter Huuto.net Credentials**: Enter your Huuto.net username and password to allow the plugin to authenticate with the Huuto API.
-3. **Save Settings**: Once saved, the plugin will request an API token and store it for future use.
+- WooCommerce
+- WordPress 5.0 or higher
+- PHP 7.0 or higher
 
----
+## Frequently Asked Questions (FAQ)
 
-## Uninstallation
+### How do I get my Huuto.net API credentials?
 
-1. Deactivate the plugin from the **Plugins** menu in WordPress.
-2. Click **Delete**. During uninstallation, the plugin will remove all Huuto-related data from the WooCommerce products, including custom fields like `_huuto_sync`, `_huuto_category_id`, `_huuto_delivery_methods`, and `_huuto_item_id`.
+To obtain your API credentials, you will need to create an account on Huuto.net and contact their support to request API access.
 
----
+### What happens if a product sync fails?
 
-## File Structure
+If the sync to Huuto.net fails, an error will be logged in the WordPress error log. Make sure to check for any API errors or invalid product data.
 
+## Changelog
+
+### Version 1.0
+
+- Initial release of the plugin.
+- Basic synchronization functionality between WooCommerce and Huuto.net.
+
+## License
+
+This plugin is open-source and distributed under the MIT License.

@@ -1,123 +1,89 @@
 <?php
-/**
-* Plugin Name: WooCommerce Huuto Sync
-* Description: Sync WooCommerce products with Huuto.
-* Version: 1.0.0
-* Author: Yan Hong
+/*
+Plugin Name: WooCommerce Huuto.net Sync
+Description: Sync your WooCommerce products with Huuto.net
+Version: 1.0
+Author: Your Name
 */
 
-// Exit if accessed directly
-if ( !defined( 'ABSPATH' ) ) {
-    exit;
-}
+// Include required classes
+require_once plugin_dir_path( __FILE__ ) . 'class-huuto-sync.php';
+require_once plugin_dir_path( __FILE__ ) . 'class-huuto-api.php';
 
-// Define constants
-define( 'HUUTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+class WooCommerce_Huuto_Sync {
+    public function __construct() {
+        // Initialize Huuto Sync functionality
+        new Huuto_Sync();
 
-// Include necessary files
-include_once HUUTO_PLUGIN_DIR . 'includes/class-huuto-api.php';
-include_once HUUTO_PLUGIN_DIR . 'includes/class-huuto-sync.php';
+        // Add settings page
+        add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
+        add_action( 'admin_init', [ $this, 'register_settings' ] );
+    }
 
-// Register activation hook
-register_activation_hook( __FILE__, 'huuto_plugin_activate' );
+    // Add a settings page for Huuto API credentials
 
-function huuto_plugin_activate() {
-    // Any code needed during plugin activation
-}
+    public function add_settings_page() {
+        add_options_page(
+            'Huuto Sync Settings',
+            'Huuto Sync',
+            'manage_options',
+            'huuto-sync-settings',
+            [ $this, 'create_settings_page' ]
+        );
+    }
 
-// Register deactivation hook
-register_deactivation_hook( __FILE__, 'huuto_plugin_deactivate' );
+    // Register settings for Huuto API
 
-function huuto_plugin_deactivate() {
-    // Any code needed during plugin deactivation
+    public function register_settings() {
+        register_setting( 'huuto_sync_settings', 'huuto_sync_settings' );
+        add_settings_section( 'huuto_sync_settings_section', 'Huuto.net API Settings', null, 'huuto-sync-settings' );
+
+        add_settings_field(
+            'huuto_sync_username',
+            'Huuto.net Username',
+            [ $this, 'settings_field_callback' ],
+            'huuto-sync-settings',
+            'huuto_sync_settings_section',
+            [ 'label_for' => 'huuto_sync_username' ]
+        );
+
+        add_settings_field(
+            'huuto_sync_password',
+            'Huuto.net Password',
+            [ $this, 'settings_field_callback' ],
+            'huuto-sync-settings',
+            'huuto_sync_settings_section',
+            [ 'label_for' => 'huuto_sync_password', 'type' => 'password' ]
+        );
+    }
+
+    // Settings field callback
+
+    public function settings_field_callback( $args ) {
+        $options = get_option( 'huuto_sync_settings' );
+        $value = isset( $options[ $args[ 'label_for' ] ] ) ? esc_attr( $options[ $args[ 'label_for' ] ] ) : '';
+        $type = isset( $args[ 'type' ] ) ? $args[ 'type' ] : 'text';
+
+        echo "<input type='{$type}' id='{$args['label_for']}' name='huuto_sync_settings[{$args['label_for']}]' value='{$value}' />";
+    }
+
+    // Create settings page content
+
+    public function create_settings_page() {
+        ?>
+        <div class = 'wrap'>
+        <h1>Huuto Sync Settings</h1>
+        <form method = 'post' action = 'options.php'>
+        <?php
+        settings_fields( 'huuto_sync_settings' );
+        do_settings_sections( 'huuto-sync-settings' );
+        submit_button();
+        ?>
+        </form>
+        </div>
+        <?php
+    }
 }
 
 // Initialize the plugin
-add_action( 'plugins_loaded', 'huuto_plugin_init' );
-
-function huuto_plugin_init() {
-    // Initialize sync functionality
-    $huuto_sync = new Huuto_Sync();
-}
-
-// Add admin styles
-add_action( 'admin_enqueue_scripts', 'huuto_admin_styles' );
-
-function huuto_admin_styles() {
-    wp_enqueue_style( 'huuto-admin-css', plugins_url( 'assets/admin.css', __FILE__ ) );
-}
-// Register the settings page
-add_action( 'admin_menu', 'huuto_sync_add_admin_menu' );
-add_action( 'admin_init', 'huuto_sync_settings_init' );
-
-// Create settings menu item
-
-function huuto_sync_add_admin_menu() {
-    add_options_page(
-        'WooCommerce Huuto Sync',    // Page title
-        'Huuto Sync',                // Menu title
-        'manage_options',            // Capability
-        'woocommerce-huuto-sync',    // Menu slug
-        'huuto_sync_options_page'    // Function to display the page
-    );
-}
-
-// Register settings fields
-
-function huuto_sync_settings_init() {
-    register_setting( 'huuto_sync_options', 'huuto_sync_settings' );
-
-    add_settings_section(
-        'huuto_sync_section',
-        __( 'Huuto.net API Settings', 'huuto-sync' ),
-        null,
-        'huuto_sync_options'
-    );
-
-    add_settings_field(
-        'huuto_sync_username',
-        __( 'Huuto.net Username', 'huuto-sync' ),
-        'huuto_sync_username_render',
-        'huuto_sync_options',
-        'huuto_sync_section'
-    );
-
-    add_settings_field(
-        'huuto_sync_password',
-        __( 'Huuto.net Password', 'huuto-sync' ),
-        'huuto_sync_password_render',
-        'huuto_sync_options',
-        'huuto_sync_section'
-    );
-}
-
-// Render input fields
-
-function huuto_sync_username_render() {
-    $options = get_option( 'huuto_sync_settings' );
-    ?>
-    <input type = 'text' name = 'huuto_sync_settings[huuto_sync_username]' value = '<?php echo $options['huuto_sync_username']; ?>'>
-    <?php
-}
-
-function huuto_sync_password_render() {
-    $options = get_option( 'huuto_sync_settings' );
-    ?>
-    <input type = 'password' name = 'huuto_sync_settings[huuto_sync_password]' value = '<?php echo $options['huuto_sync_password']; ?>'>
-    <?php
-}
-
-// Display settings page
-
-function huuto_sync_options_page() {
-    ?>
-    <form action = 'options.php' method = 'post'>
-    <h2>WooCommerce Huuto Sync</h2>
-    <?php
-    settings_fields( 'huuto_sync_options' );
-    do_settings_sections( 'huuto_sync_options' );
-    submit_button();
-    ?>
-    </form>
-    <?php
-}
+new WooCommerce_Huuto_Sync();
