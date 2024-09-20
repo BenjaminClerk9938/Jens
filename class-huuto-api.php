@@ -2,8 +2,10 @@
 
 class Huuto_API {
     private $api_url = 'https://api.huuto.net/1.1/';
+    private $category_endpoint = 'https://api.huuto.net/1.1/categories';
     private $username;
     private $password;
+    private $response;
 
     public function __construct() {
         // Retrieve settings from the database
@@ -24,7 +26,7 @@ class Huuto_API {
         }
 
         // Request new token
-        $response = wp_remote_post( $this->api_url . 'authentication', [
+        $this->response = wp_remote_post( $this->api_url . 'authentication', [
             'headers' => [ 'Content-Type' => 'application/json' ],
             'body'    => json_encode( [
                 'username' => $this->username,
@@ -32,11 +34,11 @@ class Huuto_API {
             ] )
         ] );
 
-        if ( is_wp_error( $response ) ) {
+        if ( is_wp_error( $this->response ) ) {
             return false;
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $body = json_decode( wp_remote_retrieve_body( $this->response ), true );
 
         // Save token and expiration time
         if ( isset( $body[ 'authentication' ][ 'token' ][ 'id' ] ) ) {
@@ -58,6 +60,7 @@ class Huuto_API {
         $token = $this->get_api_token();
 
         if ( !$token ) {
+            print_r("taken invalied");
             return new WP_Error( 'api_error', 'Failed to get Huuto API token' );
         }
 
@@ -73,44 +76,46 @@ class Huuto_API {
             $args[ 'body' ] = json_encode( $body );
         }
 
-        $response = wp_remote_request( $this->api_url . $endpoint, $args );
+        $this->response = wp_remote_request( $endpoint, $args );
 
-        if ( is_wp_error( $response ) ) {
-            return $response;
+        if ( is_wp_error( $this->response ) ) {
+            return $this->response;
             // Return the WP_Error object directly
         }
 
-        $status_code = wp_remote_retrieve_response_code( $response );
+        $status_code = wp_remote_retrieve_response_code( $this->response );
         if ( ! in_array( $status_code, array( 200, 201 ), true ) ) {
             // Check for success status codes
-            $error_message = wp_remote_retrieve_body( $response );
+            $error_message = wp_remote_retrieve_body( $this->response );
             return new WP_Error( 'huuto_api_error', 'Huuto API request failed. Error: ' . $error_message, array( 'status_code' => $status_code ) );
         }
 
-        return json_decode( wp_remote_retrieve_body( $response ), true );
+        return json_decode( wp_remote_retrieve_body( $this->response ), true );
     }
 
     // Example method: create item
 
     public function create_item( $data ) {
-        return $this->send_request( 'items/', 'POST', $data );
+        return $this->send_request( 'https://api.huuto.net/1.1/items/', 'POST', $data );
     }
 
     // Example method: update item status
 
     public function update_item_status( $item_id, $status ) {
-        return $this->send_request( "items/{$item_id}", 'PUT', [ 'status' => $status ] );
+        return $this->send_request( "https://api.huuto.net/1.1/items/{$item_id}", 'PUT', [ 'status' => $status ] );
     }
 
     // Method to get categories from Huuto
 
     public function get_categories() {
+        $this->response = $this->send_request( $category_endpoint, 'GET' );
         // Add a debug log to see if categories are fetched
-        if ( is_wp_error( $response ) ) {
-            error_log( 'Failed to fetch categories: ' . $response->get_error_message() );
+        if ( is_wp_error( $this->response ) ) {
+            print_r( 'Failed to fetch called' );
+            error_log( 'Failed to fetch categories: ' . $this->response->get_error_message() );
         } else {
-            error_log( 'Categories fetched: ' . print_r( $response, true ) );
+            print_r( $this->response );
+            error_log( 'Categories fetched: ' . print_r( $this->response, true ) );
         }
-        return $this->send_request( 'categories/', 'GET' );
     }
 }
