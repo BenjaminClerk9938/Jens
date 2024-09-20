@@ -126,9 +126,11 @@ class Huuto_API {
 
     // Method to get categories from Huuto
 
-    function get_categories( $url = 'https://api.huuto.net/1.1/categories' ) {
+    public function get_categories() {
+        $url = 'https://api.huuto.net/1.1/categories';
         $response = wp_remote_get( $url );
 
+        // Handle API response errors
         if ( is_wp_error( $response ) ) {
             return $response;
         }
@@ -136,16 +138,29 @@ class Huuto_API {
         $body = wp_remote_retrieve_body( $response );
         $categories = json_decode( $body, true );
 
-        // If the categories array exists, process each category
-        if ( isset( $categories[ 'categories' ] ) ) {
-            foreach ( $categories[ 'categories' ] as &$category ) {
-                if ( isset( $category[ 'links' ][ 'subcategories' ] ) ) {
-                    // Recursively fetch subcategories
-                    $category[ 'subcategories' ] = get_categories( $category[ 'links' ][ 'subcategories' ] );
+        // Handle JSON decoding errors
+        if ( json_last_error() !== JSON_ERROR_NONE ) {
+            return new WP_Error( 'json_error', 'Error decoding JSON response from Huuto.net.' );
+        }
+
+        // Loop through main categories and fetch subcategories if available
+        foreach ( $categories[ 'categories' ] as &$category ) {
+            if ( isset( $category[ 'links' ][ 'subcategories' ] ) ) {
+                $subcategories_url = $category[ 'links' ][ 'subcategories' ];
+                $sub_response = wp_remote_get( $subcategories_url );
+
+                if ( !is_wp_error( $sub_response ) ) {
+                    $sub_body = wp_remote_retrieve_body( $sub_response );
+                    $subcategories = json_decode( $sub_body, true );
+
+                    if ( isset( $subcategories[ 'categories' ] ) ) {
+                        $category[ 'subcategories' ] = $subcategories[ 'categories' ];
+                        // Attach subcategories to the category
+                    }
                 }
             }
         }
 
-        return $categories[ 'categories' ];
+        return $categories;
     }
 }
