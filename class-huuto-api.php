@@ -17,6 +17,7 @@ class Huuto_API {
     // Get API token, request if expired or non-existent
 
     private function get_api_token() {
+
         $token = get_option( 'huuto_api_token' );
         $token_expires = get_option( 'huuto_api_token_expires' );
 
@@ -24,27 +25,51 @@ class Huuto_API {
         if ( $token && $token_expires > current_time( 'timestamp' ) ) {
             return $token;
         }
-
+        $ch = curl_init();
         // Request new token
-        $this->response = wp_remote_post( $this->api_url . 'authentication', [
-            'headers' => [ 'Content-Type' => 'application/json' ],
-            'body'    => json_encode( [
-                'username' => $this->username,
-                'password' => $this->password
-            ] )
+        curl_setopt( $ch, CURLOPT_URL, $this->api_url . 'authentication' );
+        curl_setopt( $ch, CURLOPT_POST, true );
+        // Use POST method
+
+        // Important: Set Content-Type header for form-data
+        curl_setopt( $ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: multipart/form-data'
         ] );
 
-        if ( is_wp_error( $this->response ) ) {
-            return false;
+        // Create an array to hold the form data
+        $post_data = [
+            'username' => $this->username,
+            'password' => $this->password,
+        ];
+
+        // Set the POST fields using the array
+        curl_setopt( $ch, CURLOPT_POSTFIELDS, $post_data );
+
+        // Tell cURL to return the response as a string
+        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+
+        // Execute the request
+        $this->response = curl_exec( $ch );
+        // Check for cURL errors
+        if ( $this->response === false ) {
+            $error = curl_error( $ch );
+            curl_close( $ch );
+            return new WP_Error( 'huuto_api_error', 'cURL error: ' . $error );
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $this->response ), true );
+        // Close cURL handle
+        curl_close( $ch );
+
+        $body = json_decode( $this->response, true );
+        // Use $this->response directly
 
         // Save token and expiration time
         if ( isset( $body[ 'authentication' ][ 'token' ][ 'id' ] ) ) {
             $token = $body[ 'authentication' ][ 'token' ][ 'id' ];
             $expires = strtotime( $body[ 'authentication' ][ 'token' ][ 'expires' ] );
+            print_r( $token );
 
+            // Save token and expiration time in WordPress options ( for future use )
             update_option( 'huuto_api_token', $token );
             update_option( 'huuto_api_token_expires', $expires );
 
@@ -60,7 +85,6 @@ class Huuto_API {
         $token = $this->get_api_token();
 
         if ( !$token ) {
-            print_r("taken invalied");
             return new WP_Error( 'api_error', 'Failed to get Huuto API token' );
         }
 
@@ -77,11 +101,6 @@ class Huuto_API {
         }
 
         $this->response = wp_remote_request( $endpoint, $args );
-
-        if ( is_wp_error( $this->response ) ) {
-            return $this->response;
-            // Return the WP_Error object directly
-        }
 
         $status_code = wp_remote_retrieve_response_code( $this->response );
         if ( ! in_array( $status_code, array( 200, 201 ), true ) ) {
@@ -107,15 +126,26 @@ class Huuto_API {
 
     // Method to get categories from Huuto
 
-    public function get_categories() {
-        $this->response = $this->send_request( $category_endpoint, 'GET' );
-        // Add a debug log to see if categories are fetched
-        if ( is_wp_error( $this->response ) ) {
-            print_r( 'Failed to fetch called' );
-            error_log( 'Failed to fetch categories: ' . $this->response->get_error_message() );
-        } else {
-            print_r( $this->response );
-            error_log( 'Categories fetched: ' . print_r( $this->response, true ) );
+    function get_categories( $url = 'https://api.huuto.net/1.1/categories' ) {
+        $response = wp_remote_get( $url );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
         }
+
+        $body = wp_remote_retrieve_body( $response );
+        $categories = json_decode( $body, true );
+
+        // If the categories array exists, process each category
+        if ( isset( $categories[ 'categories' ] ) ) {
+            foreach ( $categories[ 'categories' ] as &$category ) {
+                if ( isset( $category[ 'links' ][ 'subcategories' ] ) ) {
+                    // Recursively fetch subcategories
+                    $category[ 'subcategories' ] = get_categories( $category[ 'links' ][ 'subcategories' ] );
+                }
+            }
+        }
+
+        return $categories[ 'categories' ];
     }
 }

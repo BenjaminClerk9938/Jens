@@ -3,7 +3,7 @@
 Plugin Name: WooCommerce Huuto.net Sync
 Description: Sync your WooCommerce products with Huuto.net
 Version: 1.0
-Author: Your Name
+Author: YanHong
 */
 
 // Include required classes
