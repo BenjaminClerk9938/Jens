@@ -22,7 +22,13 @@ class Huuto_Sync {
 
     public function add_custom_fields() {
         global $post;
-   
+           // Checkbox for syncing with Huuto
+        woocommerce_wp_checkbox( [
+            'id' => '_huuto_sync',
+            'label' => __( 'Sync with Huuto', 'huuto-sync' ),
+            'cbvalue' => 'yes', // Set checkbox value to 'yes' when checked
+        ] );
+
         echo '<div class="options_group">';
         $categories = $this->huuto_api->get_categories();
 
@@ -43,12 +49,6 @@ class Huuto_Sync {
             echo '<p>' . __( 'Error fetching categories from Huuto.net.', 'huuto-sync' ) . '</p>';
         }
 
-        // Checkbox for syncing with Huuto
-        woocommerce_wp_checkbox( [
-            'id' => '_huuto_sync',
-            'label' => __( 'Sync with Huuto', 'huuto-sync' ),
-            'cbvalue' => 'yes', // Set checkbox value to 'yes' when checked
-        ] );
 
         // Text input for Huuto Delivery Methods
         woocommerce_wp_text_input( [
