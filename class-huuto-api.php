@@ -127,40 +127,56 @@ class Huuto_API {
     // Method to get categories from Huuto
 
     public function get_categories() {
-        $url = 'https://api.huuto.net/1.1/categories';
-        $response = wp_remote_get( $url );
+        $cached_categories = get_transient( 'huuto_cached_categories' );
+        if ( $cached_categories !== false ) {
+            return $cached_categories;
+        }
 
-        // Handle API response errors
+        $response = wp_remote_get( $this->api_url . 'categories' );
         if ( is_wp_error( $response ) ) {
             return $response;
         }
 
-        $body = wp_remote_retrieve_body( $response );
-        $categories = json_decode( $body, true );
+        $categories = json_decode( wp_remote_retrieve_body( $response ), true );
 
-        // Handle JSON decoding errors
-        if ( json_last_error() !== JSON_ERROR_NONE ) {
-            return new WP_Error( 'json_error', 'Error decoding JSON response from Huuto.net.' );
-        }
+        $flattened_categories = [];
+        foreach ( $categories[ 'categories' ] as $category ) {
+            $flattened_categories[] = [
+                'id' => $category[ 'id' ],
+                'title' => $category[ 'title' ],
+                'level' => 0,
+            ];
 
-        // Loop through main categories and fetch subcategories if available
-        foreach ( $categories[ 'categories' ] as &$category ) {
             if ( isset( $category[ 'links' ][ 'subcategories' ] ) ) {
-                $subcategories_url = $category[ 'links' ][ 'subcategories' ];
-                $sub_response = wp_remote_get( $subcategories_url );
+                $subcategories_response = wp_remote_get( $category[ 'links' ][ 'subcategories' ] );
+                if ( !is_wp_error( $subcategories_response ) ) {
+                    $subcategories = json_decode( wp_remote_retrieve_body( $subcategories_response ), true );
+                    foreach ( $subcategories[ 'categories' ] as $subcategory ) {
+                        $flattened_categories[] = [
+                            'id' => $subcategory[ 'id' ],
+                            'title' => $subcategory[ 'title' ],
+                            'level' => 1,
+                        ];
 
-                if ( !is_wp_error( $sub_response ) ) {
-                    $sub_body = wp_remote_retrieve_body( $sub_response );
-                    $subcategories = json_decode( $sub_body, true );
-
-                    if ( isset( $subcategories[ 'categories' ] ) ) {
-                        $category[ 'subcategories' ] = $subcategories[ 'categories' ];
-                        // Attach subcategories to the category
+                        if ( isset( $subcategory[ 'links' ][ 'subcategories' ] ) ) {
+                            $sub_subcategories_response = wp_remote_get( $subcategory[ 'links' ][ 'subcategories' ] );
+                            if ( !is_wp_error( $sub_subcategories_response ) ) {
+                                $sub_subcategories = json_decode( wp_remote_retrieve_body( $sub_subcategories_response ), true );
+                                foreach ( $sub_subcategories[ 'categories' ] as $sub_subcategory ) {
+                                    $flattened_categories[] = [
+                                        'id' => $sub_subcategory[ 'id' ],
+                                        'title' => $sub_subcategory[ 'title' ],
+                                        'level' => 2,
+                                    ];
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        return $categories;
+        set_transient( 'huuto_cached_categories', $flattened_categories, 24 * HOUR_IN_SECONDS );
+        return $flattened_categories;
     }
 }

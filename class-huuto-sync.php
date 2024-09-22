@@ -22,37 +22,24 @@ class Huuto_Sync {
 
     public function add_custom_fields() {
         global $post;
+   
         echo '<div class="options_group">';
-
-        // Get categories from Huuto API
         $categories = $this->huuto_api->get_categories();
-        print_r( json_encode( $categories[ 'categories' ] ) );
-        // Get categories from Huuto API ( replace with your actual API call )
-        // Display categories dropdown
-        if ( !is_wp_error( $categories ) && isset( $categories[ 'categories' ] ) ) {
+
+        if ( !is_wp_error( $categories ) ) {
             echo '<p class="form-field"><label for="_huuto_category">' . __( 'Huuto.net Category', 'huuto-sync' ) . '</label>';
             echo '<select id="_huuto_category" name="_huuto_category">';
-            echo '<option value="">' . esc_html__( 'Select a category', 'huuto-sync' ) . '</option>';
-            // Default option
+            echo '<option value="">' . esc_html__( 'Select a category', 'huuto-sync' ) . '</option>'; // Default option
 
-            // Loop through categories and subcategories
-            foreach ( $categories[ 'categories' ] as $category ) {
-                // Display main category
-                $selected = selected( get_post_meta( $post->ID, '_huuto_category', true ), $category[ 'id' ], false );
-                echo '<option value="' . esc_attr( $category[ 'id' ] ) . '"' . $selected . '>' . esc_html( $category[ 'title' ] ) . '</option>';
-
-                // Display subcategories, if available
-                if ( isset( $category[ 'subcategories' ] ) ) {
-                    foreach ( $category[ 'subcategories' ] as $subcategory ) {
-                        $selected = selected( get_post_meta( $post->ID, '_huuto_category', true ), $subcategory[ 'id' ], false );
-                        echo '<option value="' . esc_attr( $subcategory[ 'id' ] ) . '"' . $selected . '>-- ' . esc_html( $subcategory[ 'title' ] ) . '</option>';
-                    }
-                }
+            // Display categories and subcategories in a hierarchical structure with indentation
+            foreach ( $categories as $category ) {
+                $indentation = str_repeat( '-- ', $category['level'] );  // Add indentation for subcategories
+                $selected = selected( get_post_meta( $post->ID, '_huuto_category', true ), $category['id'], false );
+                echo '<option value="' . esc_attr( $category['id'] ) . '"' . $selected . '>' . esc_html( $indentation . $category['title'] ) . '</option>';
             }
 
             echo '</select></p>';
         } else {
-            // Handle error if categories couldn't be fetched
             echo '<p>' . __( 'Error fetching categories from Huuto.net.', 'huuto-sync' ) . '</p>';
         }
 
