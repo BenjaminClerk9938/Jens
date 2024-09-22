@@ -179,4 +179,54 @@ class Huuto_API {
         set_transient( 'huuto_cached_categories', $flattened_categories, 24 * HOUR_IN_SECONDS );
         return $flattened_categories;
     }
+
+    public function upload_image( $huuto_item_id, $image_url ) {
+        $token = $this->get_api_token();  // Get the API token
+    
+        if ( !$token ) {
+            return new WP_Error( 'api_error', 'Failed to get Huuto API token' );
+        }
+    
+        // Get the image content from the URL
+        $file_data = file_get_contents( $image_url );
+    
+        // Prepare boundary for multipart/form-data
+        $boundary = wp_generate_password( 24, false );
+    
+        // Prepare the multipart/form-data body for image upload
+        $body = "--{$boundary}\r\n";
+        $body .= 'Content-Disposition: form-data; name="image"; filename="' . basename( $image_url ) . "\"\r\n";
+        $body .= "Content-Type: image/jpeg\r\n\r\n";  // Assuming JPEG, adjust for PNG or others
+        $body .= $file_data . "\r\n";
+        $body .= "--{$boundary}--\r\n";
+    
+        $args = [
+            'method' => 'POST',
+            'headers' => [
+                'Content-Type' => 'multipart/form-data; boundary=' . $boundary,
+                'X-HuutoApiToken' => $token,  // Use the API token here
+            ],
+            'body' => $body,
+        ];
+    
+        // Make the request to upload the image for a specific Huuto item
+        $response = wp_remote_post( $this->api_url . 'items/' . $huuto_item_id . '/images', $args );
+    
+        // Handle response
+        if ( is_wp_error( $response ) ) {
+            return new WP_Error( 'image_upload_error', 'Error uploading image to Huuto.net' );
+        }
+    
+        $status_code = wp_remote_retrieve_response_code( $response );
+        if ( ! in_array( $status_code, [200, 201], true ) ) {
+            // Handle failure if the status code is not 200 or 201
+            $error_message = wp_remote_retrieve_body( $response );
+            return new WP_Error( 'huuto_image_upload_error', 'Image upload failed: ' . $error_message, [ 'status_code' => $status_code ] );
+        }
+    
+        // Return success response
+        return json_decode( wp_remote_retrieve_body( $response ), true );
+    }
+    
+
 }
