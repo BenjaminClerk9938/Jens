@@ -15,32 +15,33 @@ class Huuto_Sync {
         add_action( 'save_post', [ $this, 'sync_product_to_huuto' ] );
 
         // Sync status changes
-        add_action( 'transition_post_status', [ $this, 'sync_status_change' ], 10, 3 );
+        add_action( 'transition_post_status', [ $this, 'sync_product_to_huuto' ], 10, 3 );
     }
 
     // Add custom fields for Huuto
 
     public function add_custom_fields() {
         global $post;
-           // Checkbox for syncing with Huuto
+        // Checkbox for syncing with Huuto
+
+        echo '<div class="options_group">';
         woocommerce_wp_checkbox( [
             'id' => '_huuto_sync',
             'label' => __( 'Sync with Huuto', 'huuto-sync' ),
             'cbvalue' => 'yes', // Set checkbox value to 'yes' when checked
         ] );
-
-        echo '<div class="options_group">';
         $categories = $this->huuto_api->get_categories();
 
         if ( !is_wp_error( $categories ) ) {
             echo '<p class="form-field"><label for="_huuto_category">' . __( 'Huuto.net Category', 'huuto-sync' ) . '</label>';
             echo '<select id="_huuto_category" name="_huuto_category">';
-            echo '<option value="">' . esc_html__( 'Select a category', 'huuto-sync' ) . '</option>'; // Default option
+            echo '<option value="">' . esc_html__( 'Select a category', 'huuto-sync' ) . '</option>';
+            // Default option
 
             foreach ( $categories as $category ) {
-                $indentation = str_repeat( '-- ', $category['level'] );
-                $selected = selected( get_post_meta( $post->ID, '_huuto_category', true ), $category['id'], false );
-                echo '<option value="' . esc_attr( $category['id'] ) . '"' . $selected . '>' . esc_html( $indentation . $category['title'] ) . '</option>';
+                $indentation = str_repeat( '-- ', $category[ 'level' ] );
+                $selected = selected( get_post_meta( $post->ID, '_huuto_category', true ), $category[ 'id' ], false );
+                echo '<option value="' . esc_attr( $category[ 'id' ] ) . '"' . $selected . '>' . esc_html( $indentation . $category[ 'title' ] ) . '</option>';
             }
 
             echo '</select></p>';
@@ -52,6 +53,7 @@ class Huuto_Sync {
         woocommerce_wp_text_input( [
             'id' => '_huuto_delivery_methods',
             'label' => __( 'Huuto Delivery Methods (comma-separated)', 'huuto-sync' ),
+            'placeholder' => 'e.g., pickup, shipment',
             'description' => __( 'Enter delivery methods separated by commas.', 'huuto-sync' ),
         ] );
 
@@ -64,11 +66,12 @@ class Huuto_Sync {
             'id' => '_huuto_open_days',
             'label' => __( 'Open Days', 'huuto-sync' ),
             'type' => 'number',
-            'custom_attributes' => ['min' => '0', 'max' => '120'],
+            'custom_attributes' => [ 'min' => '0', 'max' => '120' ],
         ] );
 
         woocommerce_wp_text_input( [
             'id' => '_huuto_payment_methods',
+            'placeholder' => 'e.g., wire-transfer, cash, mobile-pay',
             'label' => __( 'Payment Methods (comma-separated)', 'huuto-sync' ),
         ] );
 
@@ -113,7 +116,9 @@ class Huuto_Sync {
     }
 
     // Save custom fields when the product is saved
+
     public function save_custom_fields( $post_id ) {
+        update_post_meta( $post_id, '_huuto_sync', isset( $_POST[ '_huuto_sync' ] ) ? 'yes' : 'no' );
         update_post_meta( $post_id, '_huuto_category', sanitize_text_field( $_POST[ '_huuto_category' ] ) );
         update_post_meta( $post_id, '_huuto_delivery_methods', sanitize_text_field( $_POST[ '_huuto_delivery_methods' ] ) );
         update_post_meta( $post_id, '_huuto_delivery_terms', sanitize_text_field( $_POST[ '_huuto_delivery_terms' ] ) );
@@ -124,24 +129,46 @@ class Huuto_Sync {
         update_post_meta( $post_id, '_huuto_original_id', sanitize_text_field( $_POST[ '_huuto_original_id' ] ) );
         update_post_meta( $post_id, '_huuto_marginal_tax', sanitize_text_field( $_POST[ '_huuto_marginal_tax' ] ) );
         update_post_meta( $post_id, '_huuto_status', sanitize_text_field( $_POST[ '_huuto_status' ] ) );
+        //print_r( 'save_custom_fields is called' );
+        //print_r( $post_id );
+        //print_r( $_POST );
     }
 
     // Sync product to Huuto when saved
 
     public function sync_product_to_huuto( $post_id ) {
+        //print_r( 'sync_product_to_huuto' );
+        //print_r( $post_id );
+        //print_r( get_post_type( $post_id ) );
+        // Check if the post is being saved or updated
+
         // Check if it's a product post type
         if ( get_post_type( $post_id ) !== 'product' ) {
+
+            //print_r("product id don't exist");
             return;
-        }
-    
+        }   
+         // Check if the Huuto sync checkbox is checked
+         $sync_with_huuto = get_post_meta( $post_id, '_huuto_sync', true );
+         if ( $sync_with_huuto !== 'yes' ) {
+             return;  // Don't sync if the checkbox is not checked
+         }
+         //print_r("sync_product_to_huuto" );
         $huuto_item_id = get_post_meta( $post_id, '_huuto_item_id', true );
         $product = wc_get_product( $post_id );
-    
         // Product data to send to Huuto.net
+        print_r( $product );
+        $buy_now_price = $product->get_price();
+
+        // Fallback to regular price if needed
+        if ( ! $buy_now_price ) {
+            $buy_now_price = $product->get_regular_price();
+        }
+        // Get product data from WooCommerce ( adjust fields as needed )
         $data = [
             'title' => $product->get_name(),
             'description' => $product->get_description(),
-            'buyNowPrice' => $product->get_sale_price(),
+            'buyNowPrice' => $buy_now_price,
             'categoryId' => get_post_meta( $post_id, '_huuto_category', true ),
             'condition' => 'new',
             'deliveryMethods' => explode( ',', get_post_meta( $post_id, '_huuto_delivery_methods', true ) ),
@@ -155,12 +182,12 @@ class Huuto_Sync {
             'paymentTerms' => get_post_meta( $post_id, '_huuto_payment_terms', true ),
             'quantity' => $product->get_stock_quantity(),
             'republish' => 1,
-            'saleMethod' => 'buyNow',
+            'saleMethod' => 'buy-now',
             'status' => get_post_meta( $post_id, '_huuto_status', true ),
             'vat' => get_post_meta( $post_id, '_huuto_vat', true ),
-            'offersAllowed' => 'yes',
+            'offersAllowed' => 1,
         ];
-    
+        // Check if the product already exists on Huuto.net ( based on the item ID )
         if ( $huuto_item_id ) {
             // Update existing item on Huuto.net
             $response = $this->huuto_api->update_item( $huuto_item_id, $data );
@@ -171,32 +198,35 @@ class Huuto_Sync {
         } else {
             // Create a new item on Huuto.net
             $response = $this->huuto_api->create_item( $data );
-            if ( isset( $response['id'] ) ) {
-                update_post_meta( $post_id, '_huuto_item_id', $response['id'] );
-                $huuto_item_id = $response['id'];
+            print_r( json_encode( $data ) );
+            print_r( 'create item is called' );
+            if ( isset( $response[ 'id' ] ) ) {
+                update_post_meta( $post_id, '_huuto_item_id', $response[ 'id' ] );
+                $huuto_item_id = $response[ 'id' ];
             } else {
-                error_log( 'Error creating product on Huuto.net: ' . print_r( $response, true ) );
+                error_log( 'Error creating product on Huuto.net: ' .print_r( $response, true ) );
                 return;
             }
         }
-    
+
         // After successfully saving/updating product info, upload images
         if ( $huuto_item_id ) {
             $this->upload_images_to_huuto( $post_id, $huuto_item_id );
         }
     }
-    
+
     public function upload_images_to_huuto( $post_id, $huuto_item_id ) {
         $product = wc_get_product( $post_id );
-        $gallery_image_ids = $product->get_gallery_image_ids();  // Get all image IDs from WooCommerce
-    
+        $gallery_image_ids = $product->get_gallery_image_ids();
+        // Get all image IDs from WooCommerce
+
         foreach ( $gallery_image_ids as $image_id ) {
             $image_url = wp_get_attachment_url( $image_id );
-    
+
             // Send image to Huuto.net
             $this->huuto_api->upload_image( $huuto_item_id, $image_url );
         }
     }
-    
+
 }
 

@@ -67,7 +67,7 @@ class Huuto_API {
         if ( isset( $body[ 'authentication' ][ 'token' ][ 'id' ] ) ) {
             $token = $body[ 'authentication' ][ 'token' ][ 'id' ];
             $expires = strtotime( $body[ 'authentication' ][ 'token' ][ 'expires' ] );
-            print_r( $token );
+            //print_r( $token );
 
             // Save token and expiration time in WordPress options ( for future use )
             update_option( 'huuto_api_token', $token );
@@ -82,8 +82,13 @@ class Huuto_API {
     // Send API request with valid token
 
     private function send_request( $endpoint, $method = 'GET', $body = null ) {
-        $token = $this->get_api_token();
+        //print_r( $endpoint );
+        //print_r( $method );
+        //print_r( $body );
+        //print_r("send Request is called");
+        // Send API request with valid token (using wp_remote_request )
 
+        $token = $this->get_api_token();
         if ( !$token ) {
             return new WP_Error( 'api_error', 'Failed to get Huuto API token' );
         }
@@ -101,6 +106,10 @@ class Huuto_API {
         }
 
         $this->response = wp_remote_request( $endpoint, $args );
+        if ( is_wp_error( $this->response ) ) {
+            return $this->response;
+        }
+        print_r( $this->response );
 
         $status_code = wp_remote_retrieve_response_code( $this->response );
         if ( ! in_array( $status_code, array( 200, 201 ), true ) ) {
