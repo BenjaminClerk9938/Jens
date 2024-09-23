@@ -198,8 +198,8 @@ class Huuto_Sync {
         } else {
             // Create a new item on Huuto.net
             $response = $this->huuto_api->create_item( $data );
-            print_r( json_encode( $data ) );
             print_r( 'create item is called' );
+            print_r(json_encode($response));
             if ( isset( $response[ 'id' ] ) ) {
                 update_post_meta( $post_id, '_huuto_item_id', $response[ 'id' ] );
                 $huuto_item_id = $response[ 'id' ];

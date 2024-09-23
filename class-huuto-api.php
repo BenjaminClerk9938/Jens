@@ -109,7 +109,7 @@ class Huuto_API {
         if ( is_wp_error( $this->response ) ) {
             return $this->response;
         }
-        print_r( $this->response );
+        //print_r( $this->response );
 
         $status_code = wp_remote_retrieve_response_code( $this->response );
         if ( ! in_array( $status_code, array( 200, 201 ), true ) ) {
@@ -117,7 +117,7 @@ class Huuto_API {
             $error_message = wp_remote_retrieve_body( $this->response );
             return new WP_Error( 'huuto_api_error', 'Huuto API request failed. Error: ' . $error_message, array( 'status_code' => $status_code ) );
         }
-
+        print_r(json_decode( wp_remote_retrieve_body( $this->response ), true ));
         return json_decode( wp_remote_retrieve_body( $this->response ), true );
     }
 
