@@ -6,6 +6,7 @@ class Huuto_Sync {
     public function __construct() {
         // Initialize Huuto API class
         $this->huuto_api = new Huuto_API();
+        add_action( 'wp_ajax_sync_product_to_huuto', [ $this, 'ajax_sync_product_to_huuto' ] );
 
         // Add custom fields for Huuto in the product editor
         add_action( 'woocommerce_product_options_general_product_data', [ $this, 'add_custom_fields' ] );
@@ -111,7 +112,10 @@ class Huuto_Sync {
                 'waiting' => __( 'Waiting', 'huuto-sync' ),
             ],
         ] );
+        echo '<p><button id="huuto-sync-button" data-post-id="' . esc_attr( $post->ID ) . '" class="button button-primary">' . __( 'Sync to Huuto.net', 'huuto-sync' ) . '</button></p>';
 
+        // Add a status message area to display success or error messages
+        echo '<p id="huuto-sync-status"></p>';
         echo '</div>';
     }
 
@@ -134,14 +138,31 @@ class Huuto_Sync {
         //print_r( $_POST );
     }
 
+    // Handle AJAX request for syncing products
+
+    public function ajax_sync_product_to_huuto() {
+        check_ajax_referer( 'huuto_ajax_nonce', 'security' );
+        // Validate the nonce for security
+
+        $post_id = intval( $_POST[ 'post_id' ] );
+
+        if ( ! $post_id ) {
+            wp_send_json_error( 'Invalid product ID.' );
+        }
+
+        // Sync the product to Huuto.net ( reuse existing sync logic )
+        $response = $this->sync_product_to_huuto( $post_id );
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( $response->get_error_message() );
+        }
+
+        wp_send_json_success( 'Product synced successfully with Huuto.net.' );
+    }
+
     // Sync product to Huuto when saved
 
     public function sync_product_to_huuto( $post_id ) {
-        //print_r( 'sync_product_to_huuto' );
-        //print_r( $post_id );
-        //print_r( get_post_type( $post_id ) );
-        // Check if the post is being saved or updated
-
         // Check if it's a product post type
         if ( get_post_type( $post_id ) !== 'product' ) {
 
@@ -199,7 +220,7 @@ class Huuto_Sync {
             // Create a new item on Huuto.net
             $response = $this->huuto_api->create_item( $data );
             print_r( 'create item is called' );
-            print_r(json_encode($response));
+            print_r( json_encode( $response ) );
             if ( isset( $response[ 'id' ] ) ) {
                 update_post_meta( $post_id, '_huuto_item_id', $response[ 'id' ] );
                 $huuto_item_id = $response[ 'id' ];

@@ -18,8 +18,20 @@ class WooCommerce_Huuto_Sync {
         // Add settings page
         add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
         add_action( 'admin_init', [ $this, 'register_settings' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_ajax_scripts' ] );
     }
 
+    public function enqueue_ajax_scripts() {
+        if ( get_current_screen()->post_type === 'product' ) {
+            // Enqueue the custom AJAX script
+            wp_enqueue_script( 'huuto-ajax', plugin_dir_url( __FILE__ ) . 'assets/js/ajax-huuto.js', [ 'jquery' ], '1.0', true );
+
+            // Pass data to the JavaScript file
+            wp_localize_script( 'huuto-ajax', 'huuto_ajax_obj', [
+                'nonce' => wp_create_nonce( 'huuto_ajax_nonce' )  // Create a security nonce
+            ] );
+        }
+    }
     // Add a settings page for Huuto API credentials
 
     public function add_settings_page() {
