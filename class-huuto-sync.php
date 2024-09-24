@@ -116,6 +116,17 @@ class Huuto_Sync {
 
         // Add a status message area to display success or error messages
         echo '<p id="huuto-sync-status"></p>';
+
+        $huuto_product_id = get_post_meta( $post->ID, '_huuto_item_id', true );
+
+        // Display the Huuto.net Product ID as read-only
+        woocommerce_wp_text_input( [
+            'id' => '_huuto_item_id',
+            'label' => __( 'Huuto.net Product ID', 'huuto-sync' ),
+            'value' => $huuto_product_id ? $huuto_product_id : __( 'Not Synced', 'huuto-sync' ),
+            'custom_attributes' => [ 'readonly' => 'readonly' ],  // Make the field read-only
+            'description' => __( 'This is the product ID from Huuto.net.', 'huuto-sync' ),
+        ] );
         echo '</div>';
     }
 
@@ -153,11 +164,15 @@ class Huuto_Sync {
         // Sync the product to Huuto.net ( reuse existing sync logic )
         $response = $this->sync_product_to_huuto( $post_id );
 
-        if ( is_wp_error( $response ) ) {
+        if ( is_wp_error( $response ) || $response == null ) {
             wp_send_json_error( $response->get_error_message() );
         }
-
-        wp_send_json_success( 'Product synced successfully with Huuto.net.' );
+        print_r( $response );
+        // Send success response to AJAX call ( if successful )
+        wp_send_json_success( [
+            'message' => 'Product synced successfully with Huuto.net.',
+            'huuto_response' => $response, // Include the actual response
+        ] );
     }
 
     // Sync product to Huuto when saved
@@ -170,7 +185,7 @@ class Huuto_Sync {
             return;
         }   
          // Check if the Huuto sync checkbox is checked
-         $sync_with_huuto = get_post_meta( $post_id, '_huuto_sync', true );
+          $sync_with_huuto = get_post_meta( $post_id, '_huuto_sync', true );
          if ( $sync_with_huuto !== 'yes' ) {
              return;  // Don't sync if the checkbox is not checked
          }
@@ -210,30 +225,31 @@ class Huuto_Sync {
         ];
         // Check if the product already exists on Huuto.net ( based on the item ID )
         if ( $huuto_item_id ) {
+            $this->upload_images_to_huuto( $post_id, $huuto_item_id );
+
+            print_r( $huuto_item_id );
             // Update existing item on Huuto.net
             $response = $this->huuto_api->update_item( $huuto_item_id, $data );
             if ( is_wp_error( $response ) ) {
                 error_log( 'Error updating product on Huuto.net: ' . $response->get_error_message() );
                 return;
             }
+            return $response;
         } else {
             // Create a new item on Huuto.net
             $response = $this->huuto_api->create_item( $data );
             print_r( 'create item is called' );
-            print_r( json_encode( $response ) );
+            print_r( $response );
+
             if ( isset( $response[ 'id' ] ) ) {
                 update_post_meta( $post_id, '_huuto_item_id', $response[ 'id' ] );
                 $huuto_item_id = $response[ 'id' ];
             } else {
-                error_log( 'Error creating product on Huuto.net: ' .print_r( $response, true ) );
-                return;
+                return error_log( 'Error creating product on Huuto.net: ' .print_r( $response, true ) );
             }
+            return $response;
         }
 
-        // After successfully saving/updating product info, upload images
-        if ( $huuto_item_id ) {
-            $this->upload_images_to_huuto( $post_id, $huuto_item_id );
-        }
     }
 
     public function upload_images_to_huuto( $post_id, $huuto_item_id ) {

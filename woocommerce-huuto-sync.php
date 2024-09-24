@@ -10,6 +10,45 @@ Author: YanHong
 require_once plugin_dir_path( __FILE__ ) . 'class-huuto-sync.php';
 require_once plugin_dir_path( __FILE__ ) . 'class-huuto-api.php';
 
+add_action( 'manage_product_posts_custom_column', 'populate_huuto_product_id_column', 10, 2 );
+
+function populate_huuto_product_id_column( $column, $post_id ) {
+    if ( 'huuto_product_id' === $column ) {
+        $huuto_product_id = get_post_meta( $post_id, '_huuto_item_id', true );
+        if ( $huuto_product_id ) {
+            echo esc_html( $huuto_product_id );
+        } else {
+            echo '<span style="color:gray;">' . __( 'Not Synced', 'huuto-sync' ) . '</span>';
+        }
+    }
+}
+
+/**
+* Make the Huuto.net Product ID column sortable.
+*/
+add_filter( 'manage_edit-product_sortable_columns', 'make_huuto_product_id_column_sortable' );
+
+function make_huuto_product_id_column_sortable( $sortable_columns ) {
+    $sortable_columns[ 'huuto_product_id' ] = 'huuto_product_id';
+    return $sortable_columns;
+}
+
+/**
+* Handle sorting by Huuto.net Product ID in the WooCommerce products table.
+*/
+add_action( 'pre_get_posts', 'sort_by_huuto_product_id' );
+
+function sort_by_huuto_product_id( $query ) {
+    if ( ! is_admin() || ! $query->is_main_query() ) {
+        return;
+    }
+
+    if ( 'huuto_product_id' === $query->get( 'orderby' ) ) {
+        $query->set( 'meta_key', '_huuto_item_id' );
+        $query->set( 'orderby', 'meta_value' );
+    }
+}
+
 class WooCommerce_Huuto_Sync {
     public function __construct() {
         // Initialize Huuto Sync functionality

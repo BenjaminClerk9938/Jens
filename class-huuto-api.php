@@ -85,7 +85,7 @@ class Huuto_API {
         //print_r( $endpoint );
         //print_r( $method );
         //print_r( $body );
-        //print_r("send Request is called");
+        print_r("send Request is called");
         // Send API request with valid token (using wp_remote_request )
 
         $token = $this->get_api_token();
@@ -106,19 +106,24 @@ class Huuto_API {
         }
 
         $this->response = wp_remote_request( $endpoint, $args );
-        if ( is_wp_error( $this->response ) ) {
-            return $this->response;
+        if (is_wp_error($this->response)) {
+            return $this->response;  // Return error if request fails
         }
-        //print_r( $this->response );
-
+        
+        $response_body = json_decode(wp_remote_retrieve_body($this->response), true);
+        
+        if (!$response_body) {
+            return new WP_Error('response_error', 'Empty response from Huuto.net');
+        }
+        
         $status_code = wp_remote_retrieve_response_code( $this->response );
         if ( ! in_array( $status_code, array( 200, 201 ), true ) ) {
             // Check for success status codes
             $error_message = wp_remote_retrieve_body( $this->response );
             return new WP_Error( 'huuto_api_error', 'Huuto API request failed. Error: ' . $error_message, array( 'status_code' => $status_code ) );
         }
-        print_r(json_decode( wp_remote_retrieve_body( $this->response ), true ));
-        return json_decode( wp_remote_retrieve_body( $this->response ), true );
+        print_r($response_body);
+        return $response_body;  // Return the API response
     }
 
     // Example method: create item
@@ -131,6 +136,9 @@ class Huuto_API {
 
     public function update_item_status( $item_id, $status ) {
         return $this->send_request( "https://api.huuto.net/1.1/items/{$item_id}", 'PUT', [ 'status' => $status ] );
+    }
+    public function update_item( $item_id, $data ) {
+        return $this->send_request( "https://api.huuto.net/1.1/items/{$item_id}", 'PUT', $data );
     }
 
     // Method to get categories from Huuto

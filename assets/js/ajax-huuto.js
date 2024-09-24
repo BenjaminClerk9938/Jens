@@ -4,6 +4,7 @@ jQuery(document).ready(function ($) {
     e.preventDefault();
 
     var postId = $(this).data("post-id"); // Get the product ID
+    var statusArea = $("#huuto-sync-status"); // Get the status message area
 
     // Start the AJAX request
     $.ajax({
@@ -18,14 +19,23 @@ jQuery(document).ready(function ($) {
         $("#huuto-sync-status").html("Syncing..."); // Show a status message
       },
       success: function (response) {
+        console.log("Full Response Object: ", response); // Log full response object
         if (response.success) {
-          $("#huuto-sync-status").html("Success: " + response.data); // Show success message
+          console.log("Huuto Response:", response.data); // Check if response data exists
+          $("#huuto-sync-status").html(
+            '<span style="color:green;">' + response.data.message + "</span>"
+          );
         } else {
-          $("#huuto-sync-status").html("Error: " + response.data); // Show error message
+          $("#huuto-sync-status").html(
+            '<span style="color:red;">' + response.data + "</span>"
+          );
         }
       },
-      error: function (xhr, status, error) {
-        $("#huuto-sync-status").html("AJAX Error: " + error); // Show AJAX error message
+      error: function (e) {
+        console.log("Error:", e);
+        statusArea.html(
+          '<span style="color:red;">An error occurred while syncing.</span>'
+        );
       },
     });
   });
